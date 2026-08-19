@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Antrenör Takip</title>
+<style>
+  :root{
+    --bg: #14161a;
+    --bg-2: #1c1f25;
+    --bg-3: #23262e;
+    --line: #2e323b;
+    --line-soft: #262a32;
+    --text: #eceef1;
+    --text-dim: #9297a3;
+    --text-faint: #5c616d;
+    --accent: #ff5a36;
+    --accent-dim: #4a2318;
+    --ok: #3ecf8e;
+    --ok-dim: #163027;
+    --ok-soft: #1c3a2d;
+    --warn: #f2b544;
+    --warn-dim: #35290f;
+    --bad: #ef4b4b;
+    --bad-dim: #351616;
+    --radius: 14px;
+    --radius-sm: 9px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mono { font-family: "SF Mono", "Roboto Mono", Menlo, monospace; }
+
+  .app { max-width: 480px; margin: 0 auto; padding: 20px 16px 100px; }
+
+  .topbar {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .brand {
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    font-weight: 700;
+  }
+  .brand span { color: var(--accent); }
+  .today-pill {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.04em;
+  }
+
+  .month-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .month-title {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+  .month-nav { display: flex; gap: 6px; }
+  .nav-btn {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--bg-2);
+    color: var(--text);
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .nav-btn:active { transform: scale(0.94); }
+
+  .summary-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  .sum-card {
+    background: var(--bg-2);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius-sm);
+    padding: 10px 10px;
+  }
+  .sum-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    margin-bottom: 4px;
+  }
+  .sum-value {
+    font-size: 18px;
+    font-weight: 800;
+  }
+  .sum-value.accent { color: var(--accent); }
+  .sum-value.warn { color: var(--warn); }
+
+  .calendar {
+    background: var(--bg-2);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    padding: 14px 10px 10px;
+    margin-bottom: 22px;
+  }
+  .weekday-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    margin-bottom: 6px;
+  }
+  .weekday {
+    text-align: center;
+    font-size: 10px;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .day-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+  .day-cell {
+    aspect-ratio: 1;
+    border-radius: 9px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+    border: 1px solid transparent;
+    background: transparent;
+  }
+  .day-cell.empty { cursor: default; }
+  .day-cell .dnum {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim);
+  }
+  .day-cell.today { border-color: var(--accent); }
+  .day-cell.today .dnum { color: var(--accent); font-weight: 800; }
+  .day-cell.working { background: var(--bg-3); }
+  .day-cell.working .dnum { color: var(--text); }
+  .day-cell.off .dnum { color: var(--text-faint); }
+  .day-cell.selected { background: var(--accent-dim); border-color: var(--accent); }
+  .dot-row { display: flex; gap: 2px; margin-top: 3px; height: 4px; }
+  .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
+  .shift-mark {
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--text-faint);
+  }
+  .shift-mark.override { background: var(--warn); }
+
+  .day-hint {
+    font-size: 11px;
+    color: var(--text-faint);
+    text-align: center;
+    margin: -12px 0 20px;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-soft);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 18px;
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 9px 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim);
+    border-radius: 9px;
+    cursor: pointer;
+  }
+  .tab.active { background: var(--bg-3); color: var(--text); }
+
+  .section-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    font-weight: 700;
+    margin: 4px 0 10px;
+  }
+  .section-sub {
+    font-size: 12px;
+    color: var(--text-faint);
+    margin: -6px 0 16px;
+    line-height: 1.5;
+  }
+
+  .client-card {
+    background: var(--bg-2);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 10px;
+    cursor: pointer;
+  }
+  .client-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+  .client-name { font-size: 15px; font-weight: 700; }
+  .client-plan { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+  .status-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 4px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+  .status-ok { color: var(--ok); background: var(--ok-dim); }
+  .status-warn { color: var(--warn); background: var(--warn-dim); }
+  .status-bad { color: var(--bad); background: var(--bad-dim); }
+
+  .gauge-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .gauge-track {
+    flex: 1;
+    height: 6px;
+    border-radius: 4px;
+    background: var(--bg-3);
+    overflow: hidden;
+  }
+  .gauge-fill { height: 100%; border-radius: 4px; background: var(--accent); }
+  .gauge-label {
+    font-size: 12px;
+    font-weight: 700;
+    min-width: 44px;
+    text-align: right;
+    color: var(--text-dim);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 50px 20px;
+    color: var(--text-faint);
+  }
+  .empty-state .big-icon { font-size: 30px; margin-bottom: 10px; opacity: 0.5; }
+  .empty-state p { font-size: 13px; line-height: 1.6; }
+
+  .fab {
+    position: static;
+    width: 100%;
+    padding: 13px;
+    background: var(--accent);
+    color: #1a0e08;
+    font-weight: 800;
+    font-size: 14px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  .fab:active { transform: scale(0.98); }
+  .fab.secondary {
+    background: var(--bg-3);
+    color: var(--text);
+    border: 1px solid var(--line);
+  }
+  .fab.ghost-ok {
+    background: var(--ok-dim);
+    color: var(--ok);
+    border: 1px solid transparent;
+  }
+
+  .weekday-row-card {
+    background: var(--bg-2);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .weekday-row-card .wd-name {
+    font-size: 13px;
+    font-weight: 700;
+    width: 40px;
+    flex-shrink: 0;
+  }
+  .wd-toggle {
+    width: 38px;
+    height: 22px;
+    border-radius: 12px;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    position: relative;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .wd-toggle .knob {
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    transition: left 0.15s;
+  }
+  .wd-toggle.on { background: var(--ok-dim); border-color: var(--ok); }
+  .wd-toggle.on .knob { left: 18px; background: var(--ok); }
+  .wd-times {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .wd-times.disabled { color: var(--text-faint); }
+  .wd-times input[type="time"] {
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 12px;
+    padding: 5px 6px;
+    width: 78px;
+  }
+  .wd-times input[type="time"]:disabled {
+    opacity: 0.35;
+  }
+
+  .day-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 60;
+    overflow-y: auto;
+  }
+  .day-modal-overlay.open { display: block; }
+  .day-modal-inner { max-width: 480px; margin: 0 auto; padding: 18px 16px 40px; }
+  .day-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .day-modal-close {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: var(--bg-2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .day-modal-title { font-size: 18px; font-weight: 800; }
+  .day-modal-sub { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
+
+  .day-status-bar {
+    display: flex;
+    gap: 8px;
+    margin: 16px 0;
+  }
+  .day-status-pill {
+    flex: 1;
+    text-align: center;
+    padding: 8px 4px;
+    border-radius: 9px;
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--bg-2);
+    border: 1px solid var(--line-soft);
+    color: var(--text-dim);
+  }
+  .day-status-pill.on { background: var(--ok-dim); color: var(--ok); border-color: transparent; }
+  .day-status-pill.off { background: var(--bg-3); color: var(--text-faint); }
+
+  .timeline {
+    background: var(--bg-2);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    padding: 10px 0;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .tl-row {
+    display: grid;
+    grid-template-columns: 46px 1fr;
+    min-height: 40px;
+  }
+  .tl-hour-label {
+    font-size: 10px;
+    color: var(--text-faint);
+    padding: 3px 8px 0 0;
+    text-align: right;
+    font-family: "SF Mono", "Roboto Mono", Menlo, monospace;
+  }
+  .tl-slot {
+    border-top: 1px solid var(--line-soft);
+    position: relative;
+    padding: 3px 10px 3px 6px;
+  }
+  .tl-row:first-child .tl-slot { border-top: none; }
+  .tl-block {
+    border-radius: 7px;
+    padding: 6px 9px;
+    font-size: 12px;
+    font-weight: 600;
+    margin: 1px 0;
+  }
+  .tl-block.free {
+    background: var(--ok-soft);
+    color: var(--ok);
+    font-weight: 500;
+  }
+  .tl-block.shift-busy {
+    background: var(--bg-3);
+    color: var(--text-faint);
+    font-weight: 500;
+  }
+  .tl-block.busy {
+    background: var(--accent-dim);
+    color: #ffb08f;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+  .tl-block.busy .tl-del { color: var(--text-faint); font-size: 15px; }
+
+  .day-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+
+  .session-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    border-top: 1px solid var(--line-soft);
+  }
+  .session-row:first-of-type { border-top: none; }
+  .session-time {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    min-width: 46px;
+  }
+  .session-info { flex: 1; min-width: 0; }
+  .session-name { font-size: 14px; font-weight: 600; }
+  .session-note { font-size: 11px; color: var(--text-faint); }
+  .session-del {
+    color: var(--text-faint);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px 6px;
+  }
+  .empty-note {
+    font-size: 13px;
+    color: var(--text-faint);
+    padding: 10px 0 2px;
+  }
+
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 70;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-sheet {
+    width: 100%;
+    max-width: 480px;
+    background: var(--bg-2);
+    border-radius: 20px 20px 0 0;
+    padding: 20px 18px calc(20px + env(safe-area-inset-bottom, 0px));
+    max-height: 85vh;
+    overflow-y: auto;
+    border-top: 1px solid var(--line);
+  }
+  .modal-title {
+    font-size: 16px;
+    font-weight: 800;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal-close { color: var(--text-faint); font-size: 20px; cursor: pointer; }
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-faint);
+    margin-bottom: 6px;
+    font-weight: 700;
+  }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 11px 12px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1; }
+  .error-text { color: var(--bad); font-size: 12px; margin-top: 5px; display: none; }
+  .error-text.show { display: block; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 6px; }
+  .btn-danger-outline {
+    flex: 1;
+    padding: 12px;
+    background: transparent;
+    border: 1px solid var(--bad);
+    color: var(--bad);
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .checkbox-row input { width: 16px; height: 16px; }
+
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    color: var(--text);
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .history-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-top: 1px solid var(--line-soft);
+    font-size: 13px;
+  }
+  .history-row:first-child { border-top: none; }
+  .history-date { color: var(--text-dim); }
+
+  .footer-heart {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-faint);
+    opacity: 0.35;
+    padding: 18px 0 4px;
+    cursor: pointer;
+    user-select: none;
+    transition: opacity 0.2s;
+  }
+  .footer-heart:active { opacity: 0.7; }
+
+  .heart-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 90;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .heart-overlay.open { display: flex; }
+  .heart-card {
+    background: var(--bg-2);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius);
+    padding: 32px 26px;
+    max-width: 320px;
+    text-align: center;
+  }
+  .heart-icon {
+    font-size: 30px;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+  .heart-text {
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="topbar">
+    <div class="brand">ANTRENÖR<span>.</span>TAKVÎM</div>
+    <div class="today-pill mono" id="todayPill"></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="calendar">Takvim</div>
+    <div class="tab" data-tab="clients">Müşteriler</div>
+    <div class="tab" data-tab="shifts">Shift'ler</div>
+  </div>
+
+  <div id="tabContent"></div>
+
+  <div class="footer-heart" id="footerHeart" data-act="open-heart">♥</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="heart-overlay" id="heartOverlay">
+  <div class="heart-card">
+    <div class="heart-icon">♥</div>
+    <div class="heart-text">Bu uygulama Keziban için,<br>onu çok seven biri tarafından yapılmıştır.</div>
+  </div>
+</div>
+
+<div class="day-modal-overlay" id="dayModalOverlay">
+  <div class="day-modal-inner" id="dayModalInner"></div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-sheet" id="modalSheet"></div>
+</div>
+
+
+<script>
+(function(){
+
+var state = {
+  clients: [],
+  sessions: [],
+  weeklyTemplate: {
+    0: { on: true,  start: '09:00', end: '18:00' },
+    1: { on: true,  start: '09:00', end: '18:00' },
+    2: { on: true,  start: '09:00', end: '18:00' },
+    3: { on: true,  start: '09:00', end: '18:00' },
+    4: { on: true,  start: '09:00', end: '18:00' },
+    5: { on: false, start: '09:00', end: '14:00' },
+    6: { on: false, start: '09:00', end: '14:00' }
+  },
+  shiftOverrides: {}
+};
+var view = { tab: 'calendar', monthOffset: 0, selectedDate: null, dayModalDate: null };
+var editingClientId = null;
+
+var WEEKDAY_NAMES = ['Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi','Pazar'];
+var WEEKDAY_SHORT = ['Pt','Sa','Ça','Pe','Cu','Ct','Pz'];
+
+function pad(n){ return n < 10 ? '0'+n : ''+n; }
+function todayStr(){ var d = new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function fmtDateHuman(dstr){
+  var parts = dstr.split('-');
+  var months = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Ek','Kas','Ara'];
+  return parseInt(parts[2],10) + ' ' + months[parseInt(parts[1],10)-1];
+}
+function fmtDateHumanFull(dstr){
+  var wd = weekdayIndex(dstr);
+  return WEEKDAY_NAMES[wd] + ', ' + fmtDateHuman(dstr);
+}
+function weekdayIndex(dstr){
+  var d = new Date(dstr + 'T00:00:00');
+  return (d.getDay() + 6) % 7;
+}
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function escapeHtml(s){
+  return (s||'').replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function timeToMin(t){ if(!t) return 0; var p=t.split(':'); return parseInt(p[0],10)*60+parseInt(p[1],10); }
+
+function showToast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 1800);
+}
+
+var LOCAL_KEY = 'antrenor-takip-data-v1';
+
+function hasClaudeStorage(){
+  return !!(window.storage && typeof window.storage.set === 'function' && typeof window.storage.get === 'function');
+}
+
+function saveToLocalStorage(){
+  try {
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(state));
+    return true;
+  } catch(e){
+    console.error('localStorage save failed', e);
+    return false;
+  }
+}
+
+function loadFromLocalStorage(){
+  try {
+    var raw = localStorage.getItem(LOCAL_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch(e){
+    console.error('localStorage load failed', e);
+    return null;
+  }
+}
+
+function applyLoadedData(parsed){
+  state.clients = parsed.clients || [];
+  state.sessions = parsed.sessions || [];
+  if (parsed.weeklyTemplate) state.weeklyTemplate = parsed.weeklyTemplate;
+  state.shiftOverrides = parsed.shiftOverrides || {};
+  if (parsed.shifts && parsed.shifts.length && Object.keys(state.shiftOverrides).length === 0){
+    parsed.shifts.forEach(function(s){
+      state.shiftOverrides[s.date] = { on: true, start: s.start || '09:00', end: s.end || '18:00' };
+    });
+  }
+}
+
+async function loadData(){
+  var loadedFromClaude = false;
+  if (hasClaudeStorage()){
+    try {
+      var res = await window.storage.get('trainer-data');
+      if (res && res.value) {
+        applyLoadedData(JSON.parse(res.value));
+        loadedFromClaude = true;
+      }
+    } catch(e){
+      console.log('Claude storage read failed, will try local', e);
+    }
+  }
+  if (!loadedFromClaude){
+    var local = loadFromLocalStorage();
+    if (local) applyLoadedData(local);
+  }
+  render();
+}
+
+async function saveData(){
+  var localOk = saveToLocalStorage();
+  var claudeOk = true;
+  if (hasClaudeStorage()){
+    try {
+      var result = await window.storage.set('trainer-data', JSON.stringify(state));
+      claudeOk = !!result;
+    } catch(e){
+      console.error('Claude storage save failed', e && e.message ? e.message : e);
+      claudeOk = false;
+    }
+  }
+  if (!localOk && !claudeOk){
+    showToast('Kaydetme hatası oluştu, tekrar deneyin');
+    return false;
+  }
+  return true;
+}
+
+function getClient(id){
+  for (var i=0;i<state.clients.length;i++){ if (state.clients[i].id === id) return state.clients[i]; }
+  return null;
+}
+
+function sessionsForDate(dstr){
+  return state.sessions.filter(function(s){ return s.date === dstr; }).sort(function(a,b){ return (a.time||'').localeCompare(b.time||''); });
+}
+
+function shiftForDate(dstr){
+  if (state.shiftOverrides[dstr]) return state.shiftOverrides[dstr];
+  var wd = weekdayIndex(dstr);
+  return state.weeklyTemplate[wd] || { on: false, start: '09:00', end: '18:00' };
+}
+function isOverridden(dstr){
+  return !!state.shiftOverrides[dstr];
+}
+
+function clientStatus(client){
+  var remaining = client.totalSessions - client.usedSessions;
+  var today = new Date(todayStr());
+  var daysLeft = null;
+  if (client.periodEnd){
+    var end = new Date(client.periodEnd);
+    daysLeft = Math.ceil((end - today) / (1000*60*60*24));
+  }
+  if (remaining <= 0 || (daysLeft !== null && daysLeft < 0)){
+    return { label: 'SÜRESÎ DOLDU', cls: 'status-bad' };
+  }
+  if (remaining <= 2 || (daysLeft !== null && daysLeft <= 3)){
+    return { label: 'YENÎLEME YAKLAŞIYOR', cls: 'status-warn' };
+  }
+  return { label: 'AKTÎF', cls: 'status-ok' };
+}
+
+function render(){
+  document.getElementById('todayPill').textContent = fmtDateHumanFull(todayStr());
+  document.querySelectorAll('.tab').forEach(function(t){
+    t.classList.toggle('active', t.dataset.tab === view.tab);
+  });
+  var el = document.getElementById('tabContent');
+  if (view.tab === 'calendar') el.innerHTML = renderCalendarTab();
+  else if (view.tab === 'clients') el.innerHTML = renderClientsTab();
+  else el.innerHTML = renderShiftsTab();
+  attachListeners();
+}
+
+function getMonthMeta(offset){
+  var d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + offset);
+  var year = d.getFullYear(), month = d.getMonth();
+  var firstDay = new Date(year, month, 1);
+  var startWeekday = (firstDay.getDay() + 6) % 7;
+  var daysInMonth = new Date(year, month+1, 0).getDate();
+  var monthNames = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+  return { year: year, month: month, startWeekday: startWeekday, daysInMonth: daysInMonth, label: monthNames[month] + ' ' + year };
+}
+
+function renderCalendarTab(){
+  var meta = getMonthMeta(view.monthOffset);
+  var html = '';
+
+  var monthPrefix = meta.year + '-' + pad(meta.month+1);
+  var monthSessions = state.sessions.filter(function(s){ return s.date.indexOf(monthPrefix) === 0; });
+  var uniqueClientsThisMonth = {};
+  monthSessions.forEach(function(s){ uniqueClientsThisMonth[s.clientId] = true; });
+  var workingDaysCount = 0;
+  for (var dd=1; dd<=meta.daysInMonth; dd++){
+    var dds = meta.year+'-'+pad(meta.month+1)+'-'+pad(dd);
+    if (shiftForDate(dds).on) workingDaysCount++;
+  }
+
+  html += '<div class="summary-strip">';
+  html += '<div class="sum-card"><div class="sum-label">Seans</div><div class="sum-value accent">'+monthSessions.length+'</div></div>';
+  html += '<div class="sum-card"><div class="sum-label">Müşteri</div><div class="sum-value">'+Object.keys(uniqueClientsThisMonth).length+'</div></div>';
+  html += '<div class="sum-card"><div class="sum-label">Shift Günü</div><div class="sum-value warn">'+workingDaysCount+'</div></div>';
+  html += '</div>';
+
+  html += '<div class="calendar">';
+  html += '<div class="month-header"><div class="month-title">'+meta.label+'</div>';
+  html += '<div class="month-nav"><div class="nav-btn" data-act="prev-month">&#8249;</div><div class="nav-btn" data-act="next-month">&#8250;</div></div></div>';
+
+  html += '<div class="weekday-row">';
+  WEEKDAY_SHORT.forEach(function(w){ html += '<div class="weekday">'+w+'</div>'; });
+  html += '</div>';
+
+  html += '<div class="day-grid">';
+  for (var i=0;i<meta.startWeekday;i++){ html += '<div class="day-cell empty"></div>'; }
+  var today = todayStr();
+  for (var day=1; day<=meta.daysInMonth; day++){
+    var dstr = meta.year+'-'+pad(meta.month+1)+'-'+pad(day);
+    var sess = sessionsForDate(dstr);
+    var shift = shiftForDate(dstr);
+    var classes = 'day-cell';
+    if (dstr === today) classes += ' today';
+    classes += shift.on ? ' working' : ' off';
+    if (dstr === view.selectedDate) classes += ' selected';
+    html += '<div class="'+classes+'" data-date="'+dstr+'" data-act="open-day">';
+    if (isOverridden(dstr)) html += '<div class="shift-mark override"></div>';
+    else if (shift.on) html += '<div class="shift-mark"></div>';
+    html += '<div class="dnum">'+day+'</div>';
+    if (sess.length > 0){
+      html += '<div class="dot-row">';
+      for (var k=0;k<Math.min(sess.length,4);k++){ html += '<div class="dot"></div>'; }
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  html += '</div></div>';
+
+  html += '<div class="day-hint">Bir güne dokunarak detaylarını aç · nokta o gün shift&#39;in olduğunu gösterir (turuncu = güne özel değişiklik)</div>';
+
+  return html;
+}
+
+function renderClientsTab(){
+  var html = '';
+  if (state.clients.length === 0){
+    html += '<div class="empty-state"><div class="big-icon">&#9737;</div><p>Henüz müşteri eklenmedi.<br>Payment paketiyle ilk müşterini ekle.</p></div>';
+  } else {
+    var sorted = state.clients.slice().sort(function(a,b){ return a.name.localeCompare(b.name, 'tr'); });
+    sorted.forEach(function(c){
+      var remaining = c.totalSessions - c.usedSessions;
+      var pct = c.totalSessions > 0 ? Math.max(0, Math.min(100, (remaining / c.totalSessions) * 100)) : 0;
+      var status = clientStatus(c);
+      html += '<div class="client-card" data-act="open-client" data-id="'+c.id+'">';
+      html += '<div class="client-top"><div><div class="client-name">'+escapeHtml(c.name)+'</div>';
+      html += '<div class="client-plan">'+c.totalSessions+' seans / ' + (c.price ? c.price + ' TL' : 'paket') +'</div></div>';
+      html += '<div class="status-badge '+status.cls+'">'+status.label+'</div></div>';
+      html += '<div class="gauge-row"><div class="gauge-track"><div class="gauge-fill" style="width:'+pct+'%"></div></div>';
+      html += '<div class="gauge-label mono">'+remaining+'/'+c.totalSessions+'</div></div>';
+      html += '</div>';
+    });
+  }
+  html += '<button class="fab" data-act="new-client">+ Yeni Müşteri</button>';
+  return html;
+}
+
+function renderShiftsTab(){
+  var meta = getMonthMeta(view.monthOffset);
+  var monthPrefix = meta.year + '-' + pad(meta.month+1);
+  var monthOverrides = Object.keys(state.shiftOverrides)
+    .filter(function(d){ return d.indexOf(monthPrefix) === 0; })
+    .sort();
+
+  var html = '';
+  html += '<div class="section-title">Haftalık shift düzeni</div>';
+  html += '<div class="section-sub">Salonda hangi gün hangi saatler arası görevli olduğunu bir kere ayarla, her ay otomatik tekrarlanır. Müşteri randevularını bu saatlere göre planlayabilirsin. Belirli bir günü değiştirmek için takvimden o güne dokun.</div>';
+
+  for (var wd=0; wd<7; wd++){
+    var t = state.weeklyTemplate[wd];
+    html += '<div class="weekday-row-card">';
+    html += '<div class="wd-name">'+WEEKDAY_NAMES[wd].slice(0,3)+'</div>';
+    html += '<div class="wd-toggle '+(t.on?'on':'')+'" data-act="toggle-weekday" data-wd="'+wd+'"><div class="knob"></div></div>';
+    html += '<div class="wd-times '+(t.on?'':'disabled')+'">';
+    html += '<input type="time" value="'+t.start+'" data-act="wd-start" data-wd="'+wd+'" '+(t.on?'':'disabled')+'>';
+    html += '<span>–</span>';
+    html += '<input type="time" value="'+t.end+'" data-act="wd-end" data-wd="'+wd+'" '+(t.on?'':'disabled')+'>';
+    html += '</div>';
+    html += '</div>';
+  }
+
+  html += '<div class="section-title" style="margin-top:22px;">'+meta.label+' özel günler</div>';
+  if (monthOverrides.length === 0){
+    html += '<div class="empty-note">Bu ay için güne özel değişiklik yok. Tüm günler yukarıdaki düzene göre işliyor.</div>';
+  } else {
+    monthOverrides.forEach(function(d){
+      var o = state.shiftOverrides[d];
+      html += '<div class="client-card" data-act="open-day" data-date="'+d+'">';
+      html += '<div class="client-top"><div><div class="client-name">'+fmtDateHuman(d)+'</div>';
+      html += '<div class="client-plan">'+(o.on ? (o.start+' – '+o.end+' shift') : 'Shift yok')+'</div></div>';
+      html += '<div class="status-badge status-warn">ÖZEL</div></div></div>';
+    });
+  }
+
+  html += '<div class="section-title" style="margin-top:22px;">Yedekleme</div>';
+  html += '<div class="section-sub">Verilerin bu telefonda saklı. Telefon değiştirirsen veya tarayıcı verisi silinirse kaybolmaması için ara sıra yedek dosyası indir.</div>';
+  html += '<div class="modal-actions">';
+  html += '<button class="fab secondary" data-act="export-backup" style="flex:1;">Yedeği indir</button>';
+  html += '<button class="fab secondary" data-act="import-backup" style="flex:1;">Yedekten yükle</button>';
+  html += '</div>';
+  html += '<input type="file" id="importFileInput" accept="application/json" style="display:none;">';
+
+  return html;
+}
+
+function openDayModal(dstr){
+  view.dayModalDate = dstr;
+  renderDayModal();
+  document.getElementById('dayModalOverlay').classList.add('open');
+}
+function closeDayModal(){
+  document.getElementById('dayModalOverlay').classList.remove('open');
+  render();
+}
+
+function renderDayModal(){
+  var dstr = view.dayModalDate;
+  var shift = shiftForDate(dstr);
+  var overridden = isOverridden(dstr);
+  var sess = sessionsForDate(dstr);
+
+  var html = '';
+  html += '<div class="day-modal-header">';
+  html += '<div><div class="day-modal-title">'+fmtDateHuman(dstr)+'</div><div class="day-modal-sub">'+WEEKDAY_NAMES[weekdayIndex(dstr)]+'</div></div>';
+  html += '<div class="day-modal-close" data-act="close-day-modal">×</div>';
+  html += '</div>';
+
+  html += '<div class="day-status-bar">';
+  html += '<div class="day-status-pill '+(shift.on?'on':'off')+'">'+(shift.on ? ('Shift · '+shift.start+'–'+shift.end+' salonda görevlisin') : 'Bu gün shift yok, tüm gün müsaitsin')+'</div>';
+  html += '</div>';
+
+  if (overridden){
+    html += '<div class="section-sub" style="margin-top:-8px;">Bu gün için özel bir ayar tanımlı. Haftalık düzen etkilenmedi.</div>';
+  }
+
+  html += renderTimeline(dstr, shift, sess);
+
+  html += '<div class="day-actions">';
+  html += '<button class="fab" data-act="add-session" data-date="'+dstr+'">+ Bu güne seans ekle</button>';
+  html += '<button class="fab secondary" data-act="edit-day-shift" data-date="'+dstr+'">Bu günün shift saatini değiştir</button>';
+  if (overridden){
+    html += '<button class="fab ghost-ok" data-act="clear-day-override" data-date="'+dstr+'">Haftalık düzene geri dön</button>';
+  }
+  html += '</div>';
+
+  document.getElementById('dayModalInner').innerHTML = html;
+}
+
+function renderTimeline(dstr, shift, sess){
+  var DAY_START = 6 * 60;
+  var DAY_END = 24 * 60;
+  var shiftStart = timeToMin(shift.start);
+  var shiftEnd = timeToMin(shift.end);
+
+  var startH = Math.floor(Math.min(DAY_START, shiftStart) / 60);
+  var endH = Math.ceil(Math.max(DAY_END, shiftEnd) / 60);
+  if (endH <= startH) endH = startH + 1;
+
+  var busy = sess.map(function(s){
+    var st = timeToMin(s.time || '09:00');
+    return { start: st, end: st + (s.duration || 60), session: s };
+  }).sort(function(a,b){ return a.start - b.start; });
+
+  var html = '<div class="timeline">';
+  for (var h=startH; h<endH; h++){
+    var slotStart = h*60, slotEnd = (h+1)*60;
+    var inShift = slotStart < shiftEnd && slotEnd > shiftStart;
+    html += '<div class="tl-row"><div class="tl-hour-label">'+pad(h)+':00</div><div class="tl-slot">';
+
+    var overlapping = busy.filter(function(b){ return b.start < slotEnd && b.end > slotStart; });
+    if (overlapping.length > 0){
+      overlapping.forEach(function(b){
+        var client = getClient(b.session.clientId);
+        var name = client ? client.name : 'Bilinmeyen';
+        html += '<div class="tl-block busy" data-act="del-session" data-id="'+b.session.id+'">';
+        html += '<span>'+(b.session.time||'')+' · '+escapeHtml(name)+'</span>';
+        html += '<span class="tl-del">×</span></div>';
+      });
+    } else if (inShift){
+      html += '<div class="tl-block shift-busy">Shift · salonda görevli</div>';
+    } else {
+      html += '<div class="tl-block free">Müsait</div>';
+    }
+    html += '</div></div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function openModal(html){
+  document.getElementById('modalSheet').innerHTML = html;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+function modalNewClient(){
+  editingClientId = null;
+  var html = '';
+  html += '<div class="modal-title"><span>Yeni Müşteri</span><span class="modal-close" data-act="close-modal">×</span></div>';
+  html += '<div class="field"><label>Ad Soyad</label><input type="text" id="f-name" placeholder="Örn. Ahmet Yılmaz"></div>';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Toplam Seans</label><input type="number" id="f-total" placeholder="8" min="1"></div>';
+  html += '<div class="field"><label>Paket Ücreti (TL)</label><input type="number" id="f-price" placeholder="4000" min="0"></div>';
+  html += '</div>';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Ödeme Tarihi</label><input type="date" id="f-paydate" value="'+todayStr()+'"></div>';
+  html += '<div class="field"><label>Paket Bitiş</label><input type="date" id="f-enddate"></div>';
+  html += '</div>';
+  html += '<div class="error-text" id="f-error">Lütfen ad ve toplam seans sayısını girin.</div>';
+  html += '<button class="fab" data-act="save-client">Müşteriyi Kaydet</button>';
+  openModal(html);
+}
+
+function modalClientDetail(clientId){
+  var c = getClient(clientId);
+  if (!c) return;
+  editingClientId = clientId;
+  var remaining = c.totalSessions - c.usedSessions;
+  var pct = c.totalSessions > 0 ? Math.max(0, Math.min(100, (remaining / c.totalSessions) * 100)) : 0;
+  var status = clientStatus(c);
+  var history = state.sessions.filter(function(s){ return s.clientId === clientId; }).sort(function(a,b){ return b.date.localeCompare(a.date); });
+
+  var html = '';
+  html += '<div class="modal-title"><span>'+escapeHtml(c.name)+'</span><span class="modal-close" data-act="close-modal">×</span></div>';
+  html += '<div class="status-badge '+status.cls+'" style="display:inline-block;margin-bottom:10px;">'+status.label+'</div>';
+  html += '<div class="gauge-row"><div class="gauge-track"><div class="gauge-fill" style="width:'+pct+'%"></div></div>';
+  html += '<div class="gauge-label mono">'+remaining+'/'+c.totalSessions+'</div></div>';
+  html += '<div class="client-plan" style="margin-top:8px;">Paket: '+c.price+' TL · Ödeme: '+(c.payDate ? fmtDateHuman(c.payDate) : '-')+ (c.periodEnd ? ' · Bitiş: '+fmtDateHuman(c.periodEnd) : '') +'</div>';
+
+  html += '<div class="section-title" style="margin-top:18px;">Seans geçmişi</div>';
+  if (history.length === 0){
+    html += '<div class="empty-note">Henüz seans kaydedilmedi.</div>';
+  } else {
+    history.forEach(function(s){
+      html += '<div class="history-row"><span class="history-date">'+fmtDateHuman(s.date)+' · '+(s.time||'')+'</span></div>';
+    });
+  }
+
+  html += '<div class="modal-actions" style="margin-top:16px;">';
+  html += '<button class="fab secondary" data-act="edit-client" data-id="'+c.id+'" style="flex:1;">Düzenle</button>';
+  html += '</div>';
+  html += '<button class="btn-danger-outline" data-act="del-client" data-id="'+c.id+'" style="width:100%;margin-top:8px;">Müşteriyi Sil</button>';
+  openModal(html);
+}
+
+function modalEditClient(clientId){
+  var c = getClient(clientId);
+  if (!c) return;
+  editingClientId = clientId;
+  var html = '';
+  html += '<div class="modal-title"><span>Müşteriyi Düzenle</span><span class="modal-close" data-act="close-modal">×</span></div>';
+  html += '<div class="field"><label>Ad Soyad</label><input type="text" id="f-name" value="'+escapeHtml(c.name)+'"></div>';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Toplam Seans</label><input type="number" id="f-total" value="'+c.totalSessions+'" min="1"></div>';
+  html += '<div class="field"><label>Kullanılan Seans</label><input type="number" id="f-used" value="'+c.usedSessions+'" min="0"></div>';
+  html += '</div>';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Paket Ücreti (TL)</label><input type="number" id="f-price" value="'+(c.price||'')+'" min="0"></div>';
+  html += '<div class="field"><label>Ödeme Tarihi</label><input type="date" id="f-paydate" value="'+(c.payDate||'')+'"></div>';
+  html += '</div>';
+  html += '<div class="field"><label>Paket Bitiş</label><input type="date" id="f-enddate" value="'+(c.periodEnd||'')+'"></div>';
+  html += '<div class="error-text" id="f-error">Lütfen ad ve toplam seans sayısını girin.</div>';
+  html += '<button class="fab" data-act="update-client">Kaydet</button>';
+  openModal(html);
+}
+
+function modalAddSession(dstr){
+  var html = '';
+  html += '<div class="modal-title"><span>Seans Ekle</span><span class="modal-close" data-act="close-modal">×</span></div>';
+  html += '<div class="field"><label>Müşteri</label><select id="f-client">';
+  if (state.clients.length === 0){
+    html += '<option value="">Önce müşteri ekleyin</option>';
+  } else {
+    state.clients.slice().sort(function(a,b){return a.name.localeCompare(b.name,'tr');}).forEach(function(c){
+      html += '<option value="'+c.id+'">'+escapeHtml(c.name)+' ('+(c.totalSessions-c.usedSessions)+' seans kaldı)</option>';
+    });
+  }
+  html += '</select></div>';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Tarih</label><input type="date" id="f-date" value="'+dstr+'"></div>';
+  html += '<div class="field"><label>Saat</label><input type="time" id="f-time" value="09:00"></div>';
+  html += '</div>';
+  html += '<div class="field"><label>Not (opsiyonel)</label><input type="text" id="f-note" placeholder="Örn. Bacak günü"></div>';
+  html += '<div class="error-text" id="f-error">Lütfen müşteri seçin.</div>';
+  html += '<button class="fab" data-act="save-session" data-return-to-day="'+dstr+'">Seans Kaydet</button>';
+  openModal(html);
+}
+
+function modalEditDayShift(dstr){
+  var current = shiftForDate(dstr);
+  var html = '';
+  html += '<div class="modal-title"><span>'+fmtDateHuman(dstr)+' için saat</span><span class="modal-close" data-act="close-modal">×</span></div>';
+  html += '<div class="section-sub">Bu değişiklik sadece bu gün için geçerli olur, haftalık düzeniniz etkilenmez.</div>';
+  html += '<div class="checkbox-row"><input type="checkbox" id="f-day-on" '+(current.on?'checked':'')+'><label for="f-day-on" style="margin:0;">Bu gün salonda shift&#39;teyim</label></div>';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Başlangıç</label><input type="time" id="f-day-start" value="'+current.start+'"></div>';
+  html += '<div class="field"><label>Bitiş</label><input type="time" id="f-day-end" value="'+current.end+'"></div>';
+  html += '</div>';
+  html += '<button class="fab" data-act="save-day-shift" data-date="'+dstr+'">Kaydet</button>';
+  openModal(html);
+}
+
+function exportBackup(){
+  var payload = JSON.stringify(state, null, 2);
+  var blob = new Blob([payload], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  var stamp = todayStr();
+  a.href = url;
+  a.download = 'antrenor-takip-yedek-'+stamp+'.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  showToast('Yedek dosyası indirildi');
+}
+
+function importBackupFile(file){
+  var reader = new FileReader();
+  reader.onload = async function(e){
+    try {
+      var parsed = JSON.parse(e.target.result);
+      if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.clients)){
+        showToast('Geçersiz yedek dosyası');
+        return;
+      }
+      if (!confirm('Bu yedek mevcut tüm verilerin (müşteriler, seanslar, shift ayarları) üzerine yazılacak. Devam etmek istiyor musun?')) return;
+      applyLoadedData(parsed);
+      var ok = await saveData();
+      if (ok){
+        showToast('Yedek yüklendi');
+        render();
+      }
+    } catch(err){
+      console.error('Import failed', err);
+      showToast('Dosya okunamadı, geçerli bir yedek değil');
+    }
+  };
+  reader.readAsText(file);
+}
+
+var listenersBound = false;
+
+function attachListeners(){
+  if (listenersBound) return;
+  listenersBound = true;
+
+  document.getElementById('app').addEventListener('click', function(e){
+    var tabEl = e.target.closest('.tab');
+    if (tabEl){
+      view.tab = tabEl.dataset.tab;
+      render();
+      return;
+    }
+    var actEl = e.target.closest('[data-act]');
+    if (actEl){
+      e.stopPropagation();
+      handleAction(actEl.dataset.act, actEl.dataset, actEl);
+      return;
+    }
+  });
+
+  document.getElementById('app').addEventListener('change', function(e){
+    var actEl = e.target.closest('[data-act]');
+    if (actEl && (actEl.dataset.act === 'wd-start' || actEl.dataset.act === 'wd-end')){
+      handleAction(actEl.dataset.act, actEl.dataset, actEl);
+      return;
+    }
+    if (e.target.id === 'importFileInput' && e.target.files && e.target.files[0]){
+      importBackupFile(e.target.files[0]);
+      e.target.value = '';
+    }
+  });
+
+  document.getElementById('modalSheet').addEventListener('click', function(e){
+    var actEl = e.target.closest('[data-act]');
+    if (actEl){
+      e.stopPropagation();
+      handleAction(actEl.dataset.act, actEl.dataset, actEl);
+    }
+  });
+
+  document.getElementById('dayModalInner').addEventListener('click', function(e){
+    var actEl = e.target.closest('[data-act]');
+    if (actEl){
+      e.stopPropagation();
+      handleAction(actEl.dataset.act, actEl.dataset, actEl);
+    }
+  });
+
+  document.getElementById('heartOverlay').addEventListener('click', function(e){
+    if (e.target.closest('.heart-card')) return;
+    handleAction('close-heart', {}, e.target);
+  });
+}
+
+async function handleAction(act, data, el){
+  if (act === 'prev-month'){ view.monthOffset--; render(); return; }
+  if (act === 'export-backup'){ exportBackup(); return; }
+  if (act === 'import-backup'){
+    var inp = document.getElementById('importFileInput');
+    if (inp) inp.click();
+    return;
+  }
+  if (act === 'next-month'){ view.monthOffset++; render(); return; }
+  if (act === 'close-modal'){ closeModal(); return; }
+  if (act === 'open-heart'){ document.getElementById('heartOverlay').classList.add('open'); return; }
+  if (act === 'close-heart'){ document.getElementById('heartOverlay').classList.remove('open'); return; }
+
+  if (act === 'open-day'){ openDayModal(data.date); return; }
+  if (act === 'close-day-modal'){ closeDayModal(); return; }
+
+  if (act === 'new-client'){ modalNewClient(); return; }
+  if (act === 'open-client'){ modalClientDetail(data.id); return; }
+  if (act === 'edit-client'){ modalEditClient(data.id); return; }
+
+  if (act === 'save-client'){
+    var name = document.getElementById('f-name').value.trim();
+    var total = parseInt(document.getElementById('f-total').value, 10);
+    if (!name || !total || total < 1){
+      document.getElementById('f-error').classList.add('show');
+      return;
+    }
+    var price = document.getElementById('f-price').value;
+    var payDate = document.getElementById('f-paydate').value;
+    var endDate = document.getElementById('f-enddate').value;
+    state.clients.push({
+      id: uid(), name: name, totalSessions: total, usedSessions: 0,
+      price: price || '', payDate: payDate || '', periodEnd: endDate || ''
+    });
+    await saveData();
+    closeModal();
+    showToast('Müşteri eklendi');
+    render();
+    return;
+  }
+
+  if (act === 'update-client'){
+    var c = getClient(editingClientId);
+    if (!c) return;
+    var name2 = document.getElementById('f-name').value.trim();
+    var total2 = parseInt(document.getElementById('f-total').value, 10);
+    if (!name2 || !total2 || total2 < 1){
+      document.getElementById('f-error').classList.add('show');
+      return;
+    }
+    c.name = name2;
+    c.totalSessions = total2;
+    c.usedSessions = parseInt(document.getElementById('f-used').value, 10) || 0;
+    c.price = document.getElementById('f-price').value || '';
+    c.payDate = document.getElementById('f-paydate').value || '';
+    c.periodEnd = document.getElementById('f-enddate').value || '';
+    await saveData();
+    closeModal();
+    showToast('Güncellendi');
+    render();
+    return;
+  }
+
+  if (act === 'del-client'){
+    if (!confirm('Bu müşteriyi ve tüm seans kayıtlarını silmek istediğinize emin misiniz?')) return;
+    state.clients = state.clients.filter(function(c){ return c.id !== data.id; });
+    state.sessions = state.sessions.filter(function(s){ return s.clientId !== data.id; });
+    await saveData();
+    closeModal();
+    showToast('Müşteri silindi');
+    render();
+    return;
+  }
+
+  if (act === 'add-session'){ modalAddSession(data.date); return; }
+
+  if (act === 'save-session'){
+    var clientId = document.getElementById('f-client').value;
+    if (!clientId){
+      document.getElementById('f-error').classList.add('show');
+      return;
+    }
+    var date = document.getElementById('f-date').value;
+    var time = document.getElementById('f-time').value;
+    var note = document.getElementById('f-note').value.trim();
+
+    var dayShift = shiftForDate(date);
+    if (dayShift.on){
+      var t = timeToMin(time);
+      if (t >= timeToMin(dayShift.start) && t < timeToMin(dayShift.end)){
+        var proceed = confirm('Bu saat ('+time+') senin shift saatine denk geliyor ('+dayShift.start+'–'+dayShift.end+'). Yine de bu saate seans eklemek istiyor musun?');
+        if (!proceed) return;
+      }
+    }
+
+    state.sessions.push({ id: uid(), clientId: clientId, date: date, time: time, note: note, duration: 60 });
+    var cl = getClient(clientId);
+    if (cl) cl.usedSessions = (cl.usedSessions || 0) + 1;
+    var ok3 = await saveData();
+    if (!ok3){
+      state.sessions.pop();
+      if (cl) cl.usedSessions = Math.max(0, cl.usedSessions - 1);
+      return;
+    }
+    closeModal();
+    showToast('Seans eklendi');
+    var returnDate = data.returnToDay;
+    if (returnDate){
+      view.dayModalDate = returnDate;
+      renderDayModal();
+    } else {
+      view.selectedDate = date;
+      render();
+    }
+    return;
+  }
+
+  if (act === 'del-session'){
+    if (!confirm('Bu seansı silmek istediğinize emin misiniz?')) return;
+    var sess = state.sessions.find(function(s){ return s.id === data.id; });
+    if (sess){
+      var cl2 = getClient(sess.clientId);
+      if (cl2) cl2.usedSessions = Math.max(0, (cl2.usedSessions||0) - 1);
+    }
+    state.sessions = state.sessions.filter(function(s){ return s.id !== data.id; });
+    await saveData();
+    showToast('Seans silindi');
+    if (document.getElementById('dayModalOverlay').classList.contains('open')){
+      renderDayModal();
+    } else {
+      render();
+    }
+    return;
+  }
+
+  if (act === 'toggle-weekday'){
+    var wd = parseInt(data.wd, 10);
+    state.weeklyTemplate[wd].on = !state.weeklyTemplate[wd].on;
+    await saveData();
+    render();
+    return;
+  }
+  if (act === 'wd-start'){
+    var wd2 = parseInt(data.wd, 10);
+    state.weeklyTemplate[wd2].start = el.value;
+    await saveData();
+    return;
+  }
+  if (act === 'wd-end'){
+    var wd3 = parseInt(data.wd, 10);
+    state.weeklyTemplate[wd3].end = el.value;
+    await saveData();
+    return;
+  }
+
+  if (act === 'edit-day-shift'){ modalEditDayShift(data.date); return; }
+
+  if (act === 'save-day-shift'){
+    var d = data.date;
+    var onEl = document.getElementById('f-day-on');
+    var startEl = document.getElementById('f-day-start');
+    var endEl = document.getElementById('f-day-end');
+    if (!onEl || !startEl || !endEl){
+      showToast('Form yüklenemedi, tekrar deneyin');
+      return;
+    }
+    var on = onEl.checked;
+    var start = startEl.value || '09:00';
+    var end = endEl.value || '18:00';
+    var prevValue = state.shiftOverrides[d];
+    state.shiftOverrides[d] = { on: on, start: start, end: end };
+    var ok = await saveData();
+    if (!ok){
+      if (prevValue) state.shiftOverrides[d] = prevValue;
+      else delete state.shiftOverrides[d];
+      return;
+    }
+    closeModal();
+    showToast('Gün güncellendi');
+    if (document.getElementById('dayModalOverlay').classList.contains('open')){
+      renderDayModal();
+    }
+    render();
+    return;
+  }
+
+  if (act === 'clear-day-override'){
+    var removed = state.shiftOverrides[data.date];
+    delete state.shiftOverrides[data.date];
+    var ok2 = await saveData();
+    if (!ok2){
+      state.shiftOverrides[data.date] = removed;
+      return;
+    }
+    showToast('Haftalık düzene döndü');
+    if (document.getElementById('dayModalOverlay').classList.contains('open')){
+      renderDayModal();
+    }
+    render();
+    return;
+  }
+}
+
+document.getElementById('modalOverlay').addEventListener('click', function(e){
+  if (e.target === this) closeModal();
+});
+
+loadData();
+
+})();
+</script>
+</body>
+</html>
